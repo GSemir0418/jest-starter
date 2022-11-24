@@ -50,26 +50,59 @@ pnpm run test /tests/utils/sum.test.js
 
 # 2 转译器
 
-- 安装 typescript
+常见的转译器有`babel`, `tsc`, `esbuild`, `swc`
+
+- 安装 `typescript`、`ts-jest`（使jest能够测试ts文件）、jest类型定义
 
 ```bash
-pnpm add -D typescript@4.6.3
+pnpm add -D typescript@4.6.3 ts-jest@27.1.4 @types/jest@27.4.1
 ```
 
-- 利用 tsc 初始化 tsconfig
+- 利用`tsc`初始化 `tsconfig`
 
 ```bash
 npx tsc --init
 ```
 
-- 安装 ts-jest
+- 配置config
 
-```bash
-pnpm add -D ts-jest@27.1.4
+```ts
+// tsconfig.json
+{
+	"compilerOptions": {
+    	"types": ["node", "jest"]
+	}
+}
+// jest.config.js
+module.exports = {
+    // ...
+    // 
+    preset: 'ts-jest'
+}
 ```
 
-- 安装 jest 类型定义
+- 配置路径简写
 
-```bash
-pnpm add -D @types/jest@27.4.1
-```
+  - `tsconfig.json`-`compilerOptions`-`paths`
+
+  ```json
+  {
+    "compilerOptions": {
+      "baseUrl": "./",
+      "paths": {
+        "utils/*": ["src/utils/*"]
+      }
+    }
+  }
+  ```
+
+  - `jest.config.js`-`moduleDirectories`
+
+  ```js
+  module.exports = {
+    moduleDirectories: ["node_modules", "src"],
+    // ...
+  }
+  ```
+
+  

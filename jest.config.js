@@ -123,10 +123,11 @@ module.exports = {
   // runner: "jest-runner",
 
   // The paths to modules that run some code to configure or set up the testing environment before each test
-  setupFiles: ["./tests/jest-setup.ts"],
+  // setupFiles: ["./tests/jest-setup.ts"],
 
   // A list of paths to modules that run some code to configure or set up the testing framework before each test
-  // setupFilesAfterEnv: [],
+  // 因为配置了插件，所以需要等jest测试框架配置好了才能setup
+  setupFilesAfterEnv: ["./tests/jest-setup.ts"],
 
   // The number of seconds after which a test is considered as slow and reported as such in the results.
   // slowTestThreshold: 5,
@@ -135,7 +136,7 @@ module.exports = {
   // snapshotSerializers: [],
 
   // The test environment that will be used for testing
-  // testEnvironment: "jsdom",
+  testEnvironment: "jsdom",
 
   // Options that will be passed to the testEnvironment
   // testEnvironmentOptions: {},

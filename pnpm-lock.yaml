@@ -1,4 +1,4 @@
-lockfileVersion: 5.4
+lockfileVersion: 5.3
 
 specifiers:
   '@types/jest': 27.4.1
@@ -13,7 +13,7 @@ devDependencies:
   '@types/node': registry.npmmirror.com/@types/node/18.11.9
   jest: registry.npmmirror.com/jest/27.5.1
   jest-location-mock: registry.npmmirror.com/jest-location-mock/1.0.9
-  ts-jest: registry.npmmirror.com/ts-jest/27.1.4_tgc6da2oqazvrn56dzwolsqo5i
+  ts-jest: registry.npmmirror.com/ts-jest/27.1.4_9985e1834e803358b7be1e6ce5ca0eea
   typescript: registry.npmmirror.com/typescript/4.6.3
 
 packages:
@@ -225,8 +225,6 @@ packages:
     version: 7.20.3
     engines: {node: '>=6.0.0'}
     hasBin: true
-    dependencies:
-      '@babel/types': registry.npmmirror.com/@babel/types/7.20.2
     dev: true
 
   registry.npmmirror.com/@babel/plugin-syntax-async-generators/7.8.4_@babel+core@7.20.2:
@@ -3157,7 +3155,7 @@ packages:
       punycode: registry.npmmirror.com/punycode/2.1.1
     dev: true
 
-  registry.npmmirror.com/ts-jest/27.1.4_tgc6da2oqazvrn56dzwolsqo5i:
+  registry.npmmirror.com/ts-jest/27.1.4_9985e1834e803358b7be1e6ce5ca0eea:
     resolution: {integrity: sha512-qjkZlVPWVctAezwsOD1OPzbZ+k7zA5z3oxII4dGdZo5ggX/PL7kvwTM0pXTr10fAtbiVpJaL3bWd502zAhpgSQ==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/ts-jest/-/ts-jest-27.1.4.tgz}
     id: registry.npmmirror.com/ts-jest/27.1.4
     name: ts-jest

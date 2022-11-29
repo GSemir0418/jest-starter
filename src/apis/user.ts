@@ -7,5 +7,5 @@ export interface GetUserRoleRes {
 
 // 获取用户角色
 export const getUserRole = async () => {
-  return axios.get<GetUserRoleRes>("https://whatever/site/apo/role");
+  return axios.get<GetUserRoleRes>("https://whatever/site/api/role");
 };

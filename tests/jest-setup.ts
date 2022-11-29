@@ -2,6 +2,16 @@
 import "jest-location-mock";
 // 提供关于DOM的更多Matcher
 import "@testing-library/jest-dom";
+import server from "./mockServer/server";
+beforeAll(() => {
+  server.listen();
+});
+afterEach(() => {
+  server.resetHandlers();
+});
+afterAll(() => {
+  server.close();
+});
 // 给测试环境mock一个全局localStorage实现;
 // Object.defineProperty(global, "localStorage", {
 //   value: {

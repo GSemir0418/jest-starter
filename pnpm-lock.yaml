@@ -8,6 +8,7 @@ specifiers:
   '@types/node': ^18.11.9
   '@types/react': 17.0.2
   '@types/react-dom': 17.0.2
+  '@types/redux-mock-store': 1.0.3
   '@types/testing-library__jest-dom': ^5.14.5
   antd: 4.19.5
   axios: 0.26.1
@@ -24,6 +25,8 @@ specifiers:
   react-dom: 17.0.2
   react-redux: 8.0.1
   redux: 4.2.0
+  redux-mock-store: 1.5.4
+  redux-thunk: ^2.4.2
   style-loader: 3.3.1
   ts-jest: 27.1.4
   ts-loader: 9.2.8
@@ -49,6 +52,7 @@ devDependencies:
   '@types/node': registry.npmmirror.com/@types/node/18.11.9
   '@types/react': registry.npmmirror.com/@types/react/17.0.2
   '@types/react-dom': registry.npmmirror.com/@types/react-dom/17.0.2
+  '@types/redux-mock-store': registry.npmmirror.com/@types/redux-mock-store/1.0.3
   '@types/testing-library__jest-dom': registry.npmmirror.com/@types/testing-library__jest-dom/5.14.5
   css-loader: registry.npmmirror.com/css-loader/6.7.1_webpack@5.72.0
   html-webpack-plugin: registry.npmmirror.com/html-webpack-plugin/5.5.0_webpack@5.72.0
@@ -58,6 +62,8 @@ devDependencies:
   less: registry.npmmirror.com/less/4.1.2
   less-loader: registry.npmmirror.com/less-loader/10.2.0_less@4.1.2+webpack@5.72.0
   msw: registry.npmmirror.com/msw/0.39.2
+  redux-mock-store: registry.npmmirror.com/redux-mock-store/1.5.4
+  redux-thunk: registry.npmmirror.com/redux-thunk/2.4.2_redux@4.2.0
   style-loader: registry.npmmirror.com/style-loader/3.3.1_webpack@5.72.0
   ts-jest: registry.npmmirror.com/ts-jest/27.1.4_9985e1834e803358b7be1e6ce5ca0eea
   ts-loader: registry.npmmirror.com/ts-loader/9.2.8_typescript@4.6.3+webpack@5.72.0
@@ -1237,6 +1243,14 @@ packages:
     dependencies:
       '@types/prop-types': registry.npmmirror.com/@types/prop-types/15.7.5
       csstype: registry.npmmirror.com/csstype/3.1.1
+
+  registry.npmmirror.com/@types/redux-mock-store/1.0.3:
+    resolution: {integrity: sha512-Wqe3tJa6x9MxMN4DJnMfZoBRBRak1XTPklqj4qkVm5VBpZnC8PSADf4kLuFQ9NAdHaowfWoEeUMz7NWc2GMtnA==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/redux-mock-store/-/redux-mock-store-1.0.3.tgz}
+    name: '@types/redux-mock-store'
+    version: 1.0.3
+    dependencies:
+      redux: registry.npmmirror.com/redux/4.2.0
+    dev: true
 
   registry.npmmirror.com/@types/retry/0.12.0:
     resolution: {integrity: sha512-wWKOClTTiizcZhXnPY4wikVAwmdYHp8q6DmC+EJUzAMsycb7HB32Kh9RN4+0gExjmPmZSAQjgURXIGATPegAvA==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/retry/-/retry-0.12.0.tgz}
@@ -4883,6 +4897,12 @@ packages:
       p-locate: registry.npmmirror.com/p-locate/4.1.0
     dev: true
 
+  registry.npmmirror.com/lodash.isplainobject/4.0.6:
+    resolution: {integrity: sha512-oSXzaWypCMHkPC3NvBEaPHf0KsA5mvPrOPgQWDsbg8n7orZ290M0BmC/jgRZ4vcJ6DTAhjrsSYgdsW/F+MFOBA==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/lodash.isplainobject/-/lodash.isplainobject-4.0.6.tgz}
+    name: lodash.isplainobject
+    version: 4.0.6
+    dev: true
+
   registry.npmmirror.com/lodash.memoize/4.1.2:
     resolution: {integrity: sha512-t7j+NzmgnQzTAYXcsHYLgimltOV1MXHtlOWf6GjL9Kj8GK5FInw5JotxvbOs+IvV1/Dzo04/fCGfLVs7aXb4Ag==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/lodash.memoize/-/lodash.memoize-4.1.2.tgz}
     name: lodash.memoize
@@ -6524,6 +6544,14 @@ packages:
       strip-indent: registry.npmmirror.com/strip-indent/3.0.0
     dev: true
 
+  registry.npmmirror.com/redux-mock-store/1.5.4:
+    resolution: {integrity: sha512-xmcA0O/tjCLXhh9Fuiq6pMrJCwFRaouA8436zcikdIpYWWCjU76CRk+i2bHx8EeiSiMGnB85/lZdU3wIJVXHTA==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/redux-mock-store/-/redux-mock-store-1.5.4.tgz}
+    name: redux-mock-store
+    version: 1.5.4
+    dependencies:
+      lodash.isplainobject: registry.npmmirror.com/lodash.isplainobject/4.0.6
+    dev: true
+
   registry.npmmirror.com/redux-thunk/2.4.2_redux@4.2.0:
     resolution: {integrity: sha512-+P3TjtnP0k/FEjcBL5FZpoovtvrTNT/UXd4/sluaSyrURlSlhLSzEdfsTBW7WsKB6yPvgd7q/iZPICFjW4o57Q==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/redux-thunk/-/redux-thunk-2.4.2.tgz}
     id: registry.npmmirror.com/redux-thunk/2.4.2
@@ -6533,7 +6561,6 @@ packages:
       redux: ^4
     dependencies:
       redux: registry.npmmirror.com/redux/4.2.0
-    dev: false
 
   registry.npmmirror.com/redux/4.2.0:
     resolution: {integrity: sha512-oSBmcKKIuIR4ME29/AeNUnl5L+hvBq7OaJWzaptTQJAntaPvxIJqfnjbaEiCzzaIz+XmVILfqAM3Ob0aXLPfjA==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/redux/-/redux-4.2.0.tgz}
@@ -6541,7 +6568,6 @@ packages:
     version: 4.2.0
     dependencies:
       '@babel/runtime': registry.npmmirror.com/@babel/runtime/7.20.1
-    dev: false
 
   registry.npmmirror.com/regenerator-runtime/0.13.11:
     resolution: {integrity: sha512-kY1AZVr2Ra+t+piVaJ4gxaFaReZVH40AKNo7UCX6W+dEwBo/2oZJzqfuN1qLq1oL45o56cPaTXELwrTh8Fpggg==, registry: http://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/regenerator-runtime/-/regenerator-runtime-0.13.11.tgz}

@@ -1,12 +1,13 @@
 import { rest } from "msw";
 import reducer, { updateUserName } from "store/user/reducer";
-import server from "tests/mockServer/server";
+import server from "../../../mockServer/server";
 import configureStore from "redux-mock-store";
 import thunk from "redux-thunk";
+import { fetchUserThunk } from "store/user/thunks";
 // 初始化http函数
 const setupHttp = (name?: string, age?: number) => {
   server.use(
-    rest.get("https://mysite.com/api/users", async (req, res, ctx) => {
+    rest.get("https://whatever/site/api/users", async (req, res, ctx) => {
       return res(
         ctx.status(200),
         ctx.json({
@@ -55,7 +56,8 @@ describe("reducer", () => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const data = await store.dispatch(fetchUserThunk());
-
+        console.log("===============");
+        console.log(data);
         expect(data.payload).toEqual({
           id: "1",
           name: "Mary",

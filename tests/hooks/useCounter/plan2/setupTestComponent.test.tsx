@@ -15,6 +15,8 @@ const setup = (initialNumber: number) => {
       counter,
       utils,
     });
+    // 由于只是初始化React组件环境
+    // 无需返回dom
     return null;
   };
   render(<UseCounterTestComponent />);

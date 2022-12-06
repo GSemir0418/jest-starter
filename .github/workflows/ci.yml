@@ -1,0 +1,32 @@
+# 指定工作流程的名称
+name: CI-learning
+# 指定此工作流程的触发事件Event（push、pull-request）
+on:
+  push:
+    # 监听main分支的push事件
+    branches: main
+jobs:
+  #指定job名称
+  CI:
+    # 指定该job在最新版本的ubuntu linux的runner上运行
+    runs-on: ubuntu-latest
+    # 此job的工作步骤
+    steps:
+      # 首先运行actions/checkout@v3操作，操作一般用uses来调用
+      # 拉取代码到runner
+      - name: Checkout repository
+      - uses: actions/checkout@v3
+      # 给当前环境下载node，并指定版本为16.x
+      - name: Use Node.js
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16.x"
+      # 安装pnpm
+      - name: Installing Pnpm
+        run: npm i -g pnpm
+      # 安装依赖
+      - name: Installing Dependencies
+        run: pnpm install
+      # 运行自动化测试
+      - name: Running Test
+        run: pnpm run test

@@ -4,7 +4,7 @@ name: CI-learning
 on:
   push:
     # 监听main分支的push事件
-    branches: main
+    branches: master
 jobs:
   #指定job名称
   CI:

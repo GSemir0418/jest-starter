@@ -15,10 +15,10 @@ jobs:
       # 首先运行actions/checkout@v3操作，操作一般用uses来调用
       # 拉取代码到runner
       - name: Checkout repository
-      - uses: actions/checkout@v3
+        uses: actions/checkout@v3
       # 给当前环境下载node，并指定版本为16.x
       - name: Use Node.js
-      - uses: actions/setup-node@v3
+        uses: actions/setup-node@v3
         with:
           node-version: "16.x"
       # 安装pnpm

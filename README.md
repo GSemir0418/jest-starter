@@ -1,3 +1,4 @@
+[![Coverage Status](https://coveralls.io/repos/github/GSemir0418/jest-starter/badge.svg?branch=master)](https://coveralls.io/github/GSemir0418/jest-starter?branch=master)
 参考文章：[小书介绍 | Jest 实践指南 (yanhaixiang.com)](https://github.yanhaixiang.com/jest-tutorial/)
 
 # 1 起步
@@ -52,7 +53,7 @@ pnpm run test /tests/utils/sum.test.js
 
 常见的转译器有`babel`, `tsc`, `esbuild`, `swc`
 
-- 安装 `typescript`、`ts-jest`（使jest能够测试ts文件）、jest类型定义
+- 安装 `typescript`、`ts-jest`（使 jest 能够测试 ts 文件）、jest 类型定义
 
 ```bash
 pnpm add -D typescript@4.6.3 ts-jest@27.1.4 @types/jest@27.4.1
@@ -64,7 +65,7 @@ pnpm add -D typescript@4.6.3 ts-jest@27.1.4 @types/jest@27.4.1
 npx tsc --init
 ```
 
-- 配置config
+- 配置 config
 
 ```ts
 // tsconfig.json
@@ -76,7 +77,7 @@ npx tsc --init
 // jest.config.js
 module.exports = {
     // ...
-    // 
+    //
     preset: 'ts-jest'
 }
 ```
@@ -102,7 +103,5 @@ module.exports = {
   module.exports = {
     moduleDirectories: ["node_modules", "src"],
     // ...
-  }
+  };
   ```
-
-  

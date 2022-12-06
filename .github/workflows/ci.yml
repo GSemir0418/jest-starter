@@ -9,7 +9,8 @@ jobs:
   #指定job名称
   CI:
     # 指定该job在最新版本的ubuntu linux的runner上运行
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest
+    runs-on: macos-latest
     # 此job的工作步骤
     steps:
       # 首先运行actions/checkout@v3操作，操作一般用uses来调用
@@ -22,11 +23,11 @@ jobs:
         with:
           node-version: "16.16.0"
       # 安装pnpm
-      # - name: Installing Pnpm
-      #   run: npm i -g pnpm
+      - name: Installing Pnpm
+        run: npm i -g pnpm
       # 安装依赖
       - name: Installing Dependencies
-        run: npm install
+        run: pnpm install
       # 运行自动化测试
       - name: Running Test
-        run: npm run test
+        run: pnpm run test

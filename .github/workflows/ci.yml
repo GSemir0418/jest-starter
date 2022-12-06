@@ -31,3 +31,8 @@ jobs:
       # 运行自动化测试
       - name: Running Test
         run: pnpm run test
+      # 使用 Coveralls 组件显示可视化测试报告
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

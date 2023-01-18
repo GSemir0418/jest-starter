@@ -289,6 +289,7 @@ describe("getSearchObj", () => {
 
 - 当需要测试计时器相关的代码时，如果计时器时间过长，会极大地影响测试效率
 - 因此 jest 提供了一些关于 Mock Timer 的 API
+
   1. **`useFakeTimers`**: 让 jest 使用假的 Timer（包括 Date 等 API），应在每次测试前（beforeAll）调用
   2. **`runAllTimers`**: 将宏任务队列（例如`setTimeout()`、`setInterval()`、`setImmediate()`）与微任务队列（`process.nextTick`）快速执行完毕
   3. **`spyOn`**:创建一个类似于 `jest.fn` 的模拟函数，但同时也会跟踪对 `object[methodName]` 的调用。返回 Jest 模拟函数。
@@ -310,7 +311,9 @@ const after1000ms = (callback?: AnyFunction) => {
 
 export default after1000ms;
 ```
+
 - 测试代码
+
 ```ts
 // tests/utils/after1000ms.ts
 import after1000ms from "utils/after1000ms";
@@ -337,5 +340,274 @@ describe("after1000ms", () => {
     expect(setTimeout).toHaveBeenCalledTimes(1);
   });
 });
-
 ```
+
+### 6.2 Fake Timer
+
+Jest 的 `Fake Timer` 就是把 setTimeout 等`延时 API` 的回调都收集到自己的 `Queue` 里， 你可以随时随地清算这个 `Queue`，而不需要等 XX 毫秒后再一个个执行。
+
+- 需求：利用 Promise 以及 setTimeout 来实现程序的 sleep 效果
+
+```ts
+const sleep = (ms: number) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+};
+
+export default sleep;
+```
+
+- 测试代码
+
+```ts
+import sleep from "utils/sleep";
+
+describe("sleep", () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+  it("可以睡眠1000ms", async () => {
+    const callback = jest.fn();
+    const act = async (callback: () => void) => {
+      await sleep(1000);
+      callback();
+    };
+
+    // 利用promise变量存储sleep返回的Promise
+    const promise = act(callback);
+    // mockCallback 还未调用
+    expect(callback).not.toBeCalled();
+    // 清算 Jest 宏任务队列的回调，其中会执行 setTimeout 里的 resolve 函数
+    // 就会把callback()放入微任务队列
+    jest.runAllTimers();
+    // 执行 callback 内容
+    // 利用await将expec同步代码延后至promise被resolve之后执行
+    await promise;
+    // mockCallback 已调用
+    expect(callback).toBeCalled();
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+## 7 配置 React
+
+- 安装依赖（在后面使用时会一一介绍）
+
+```bash
+# Webpack 依赖及插件
+pnpm add -D webpack@5.72.0 webpack-cli@4.10.0 webpack-dev-server@4.8.1 html-webpack-plugin@5.5.0
+
+# Loader
+pnpm add -D less@4.1.2 less-loader@10.2.0 style-loader@3.3.1 css-loader@6.7.1 ts-loader@9.2.8
+
+# React 以及业务
+pnpm add react@17.0.2 react-dom@17.0.2 axios@0.26.1 antd@4.19.5 classnames@2.3.1
+pnpm add -D @types/react@17.0.2 @types/react-dom@17.0.2
+```
+
+- 在根目录添加 Webpack 配置文件 `webpack.config.js`：
+
+```js
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+
+module.exports = {
+  mode: "development",
+  entry: {
+    index: "./src/index.tsx",
+  },
+  module: {
+    rules: [
+      // 解析 TypeScript
+      {
+        test: /\.(tsx?|jsx?)$/,
+        use: "ts-loader",
+        exclude: /(node_modules|tests)/,
+      },
+      // 解析 CSS
+      {
+        test: /\.css$/i,
+        use: [{ loader: "style-loader" }, { loader: "css-loader" }],
+      },
+      // 解析 Less
+      {
+        test: /\.less$/i,
+        use: [
+          { loader: "style-loader" },
+          {
+            loader: "css-loader",
+            options: {
+              modules: {
+                mode: (resourcePath) => {
+                  if (/pure.css$/i.test(resourcePath)) {
+                    return "pure";
+                  }
+                  if (/global.css$/i.test(resourcePath)) {
+                    return "global";
+                  }
+                  return "local";
+                },
+              },
+            },
+          },
+          { loader: "less-loader" },
+        ],
+      },
+    ],
+  },
+  resolve: {
+    extensions: [".tsx", ".ts", ".js", ".less", "css"],
+    // 设置别名
+    alias: {
+      utils: path.join(__dirname, "src/utils/"),
+      components: path.join(__dirname, "src/components/"),
+      apis: path.join(__dirname, "src/apis/"),
+      hooks: path.join(__dirname, "src/hooks/"),
+      store: path.join(__dirname, "src/store/"),
+    },
+  },
+  devtool: "inline-source-map",
+  // 3000 端口打开网页
+  devServer: {
+    static: "./dist",
+    port: 3000,
+    hot: true,
+  },
+  // 默认输出
+  output: {
+    filename: "index.js",
+    path: path.resolve(__dirname, "dist"),
+    clean: true,
+  },
+  // 指定模板 html
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: "./public/index.html",
+    }),
+  ],
+};
+```
+
+- 在 `public/index.html` 添加模板 HTML 文件：
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>React App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+```
+
+- 在 `package.json` 添加启动命令：
+
+```json
+{
+  "scripts": {
+    "start": "webpack serve",
+    "test": "jest"
+  }
+}
+```
+
+- 在 `src/index.tsx` 添加入口：
+
+```tsx
+import React from "react";
+import ReactDOM from "react-dom";
+import App from "./App";
+import "antd/dist/antd.css";
+
+ReactDOM.render(<App />, document.querySelector("#root"));
+```
+
+- 添加 `src/App.tsx` 根组件：
+
+```jsx
+import React from "react";
+import { Button } from "antd";
+
+const App = () => {
+  return (
+    <div>
+      <h1>Hello</h1>
+      <Button>点我</Button>
+    </div>
+  );
+};
+
+export default App;
+```
+
+- `tsconfig.json`完善路径映射
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react",
+    "esModuleInterop": true,
+    "baseUrl": "./",
+    "paths": {
+      "utils/*": ["src/utils/*"],
+      "components/*": ["src/components/*"],
+      "apis/*": ["src/apis/*"],
+      "hooks/*": ["src/hooks/*"],
+      "store/*": ["src/store/*"]
+    }
+  }
+}
+```
+
+- 现在执行 `npm run start`，进入 localhost:3000 就能看到我们的页面了
+
+## 8 快照测试
+
+这一章我们学会了 快照测试。快照测试的思想很简单：
+
+先执行一次测试，把输出结果记录到 .snap 文件，以后每次测试都会把输出结果和 .snap 文件做 对比
+快照失败有两种可能：
+业务代码变更后导致输出结果和以前记录的 .snap 不一致，说明业务代码有问题，要排查 Bug
+业务代码有更新导致输出结果和以前记录的 .snap 不一致，新增功能改变了原有的 DOM 结构，要用 npx jest --updateSnapshot 更新当前快照
+不过现实中这两种失败情况并不好区分，更多的情况是你既在重构又要加新需求，这就是为什么快照测试会出现 “假错误”。而如果开发者还滥用快照测试，并生成很多大快照， 那么最终的结果是没有人再相信快照测试。一遇到快照测试不通过，都不愿意探究失败的原因，而是选择更新快照来 “糊弄一下”。
+
+要避免这样的情况，需要做好两点：
+
+生成小快照。 只取重要的部分来生成快照，必须保证快照是能让你看懂的
+合理使用快照。 快照测试不是只为组件测试服务，同样组件测试也不一定要包含快照测试。快照能存放一切可序列化的内容。
+根据上面两点，还能总结出快照测试的适用场景：
+
+组件 DOM 结构的对比
+在线上跑了很久的老项目
+大块数据结果的对比
+
+## 9 组件测试
+
+### 9.1 需求
+
+### 9.2 less 转译（ts+jest）
+
+### 9.3 更多 Matchers
+
+### 9.4 三种测试方案
+
+#### 9.4.1 Mock axios
+
+#### 9.4.2 Mock API 实现
+
+#### 9.4.3 Mock Http 请求
+
+#### 9.4.4 总结
+
+## 10 Redux 测试
+
+## 11 React Hook 测试
+
+## 12 Jest 性能优化
+
+## 13 自动化测试

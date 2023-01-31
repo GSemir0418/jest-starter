@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Title 可以正确渲染标题 1`] = `
+<body>
+  <div>
+    <p
+      style="font-size: 20px; color: red;"
+    >
+      大字
+    </p>
+  </div>
+</body>
+`;

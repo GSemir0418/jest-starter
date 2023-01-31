@@ -186,7 +186,7 @@ module.exports = {
 
 - 添加 jsdom 测试环境后，全局会自动拥有完整的浏览器标准 API。原理是使用了 `jsdom`。 这个库用 JS 实现了一套 Node.js 环境下的 Web 标准 API。 由于 Jest 的测试文件也是 Node.js 环境下执行的，所以 Jest 用这个库充当了浏览器环境的 Mock 实现。
 
-- 现在清空 jest-setup.ts 里的代码，直接 npm run test 也会发现测试成功：
+- 现在清空 jest-setup.ts 里的代码，直接 npm run test 也会发现测试成功
 
 ## 4 Mock 网页地址
 
@@ -568,43 +568,642 @@ export default App;
 
 ## 8 快照测试
 
-这一章我们学会了 快照测试。快照测试的思想很简单：
+- 快照测试**思路**：
+  先执行一次测试，把输出结果记录到 .snap 文件，以后每次测试都会把输出结果和 .snap 文件做对比
 
-先执行一次测试，把输出结果记录到 .snap 文件，以后每次测试都会把输出结果和 .snap 文件做 对比
-快照失败有两种可能：
-业务代码变更后导致输出结果和以前记录的 .snap 不一致，说明业务代码有问题，要排查 Bug
-业务代码有更新导致输出结果和以前记录的 .snap 不一致，新增功能改变了原有的 DOM 结构，要用 npx jest --updateSnapshot 更新当前快照
-不过现实中这两种失败情况并不好区分，更多的情况是你既在重构又要加新需求，这就是为什么快照测试会出现 “假错误”。而如果开发者还滥用快照测试，并生成很多大快照， 那么最终的结果是没有人再相信快照测试。一遇到快照测试不通过，都不愿意探究失败的原因，而是选择更新快照来 “糊弄一下”。
+### 8.1 Title 组件测试
 
-要避免这样的情况，需要做好两点：
+- 安装 react 测试库
 
-生成小快照。 只取重要的部分来生成快照，必须保证快照是能让你看懂的
-合理使用快照。 快照测试不是只为组件测试服务，同样组件测试也不一定要包含快照测试。快照能存放一切可序列化的内容。
-根据上面两点，还能总结出快照测试的适用场景：
+```bash
+pnpm add -D @testing-library/react@12.1.4
+```
 
-组件 DOM 结构的对比
-在线上跑了很久的老项目
-大块数据结果的对比
+- 需求：
+
+```tsx
+import React from "react";
+export const Title = (props: { title: string }) => {
+  const { title } = props;
+  return <p style={{ fontSize: "20px", color: "red" }}>{title}</p>;
+};
+```
+
+- 测试代码：
+
+```tsx
+describe("Title", () => {
+  it("可以正确渲染标题", () => {
+    const { baseElement } = render(<Title title="大字" />);
+    expect(baseElement).toMatchSnapshot();
+  });
+});
+```
+
+- 执行测试后，会在同级目录生成`/__snashots__/Title.test.tsx.snap`快照文件，第一次执行一般都是成功的（老项目刷测试覆盖率常用手段）
+
+### 8.2 快照测试分析
+
+- 快照**失败**有两种可能：
+
+  1. 业务代码变更后导致输出结果和以前记录的 .snap 不一致，说明业务代码有问题，要排查 Bug
+  2. 业务代码有更新导致输出结果和以前记录的 .snap 不一致，新增功能改变了原有的 DOM 结构，要用 `npx jest --updateSnapshot` 更新当前快照
+
+- 快照测试的**硬伤**：
+
+  - 不过现实中这两种失败情况并不好区分，更多的情况是你既在重构又要加新需求，这就是为什么快照测试会出现 “假错误”。而如果开发者还滥用快照测试，并生成很多大快照， 那么最终的结果是没有人再相信快照测试。一遇到快照测试不通过，都不愿意探究失败的原因，而是选择更新快照来 “糊弄一下”。
+
+- 快照测试**注意事项**：
+
+  1. 生成小快照。 只取重要的部分来生成快照，必须保证快照是能让你看懂的
+  2. 合理使用快照。 快照测试不是只为组件测试服务，同样组件测试也不一定要包含快照测试。快照能存放一切可序列化的内容。
+
+- 根据上面两点，还能总结出快照测试的**适用场景**：
+  - 组件 DOM 结构的对比
+  - 在线上跑了很久的老项目
+  - 大块数据结果的对比
 
 ## 9 组件测试
 
 ### 9.1 需求
 
+实现一个 AuthButton，通过 getLoginState 获取当前用户的身份并在按钮中展示用户身份。
+
+- 实现 AuthButton 业务组件
+- 在 API 函数 getLoginState 发请求获取用户身份
+- 把 Http 请求的返回 loginStateResponse 展示到按钮上
+
+#### 9.1.1 组件代码
+
+`src/components/AuthButton/index.tsx`：
+
+```tsx
+// src/components/AuthButton/index.tsx
+import React, { FC, useEffect, useState } from "react";
+import { Button, ButtonProps, message } from "antd";
+import classnames from "classnames";
+import styles from "./styles.module.less";
+import { getUserRole, UserRoleType } from "apis/user";
+
+type Props = ButtonProps;
+
+// 身份文案 Mapper
+const mapper: Record<UserRoleType, string> = {
+  user: "普通用户",
+  admin: "管理员",
+};
+
+const AuthButton: FC<Props> = (props) => {
+  const { children, className, ...restProps } = props;
+
+  const [userType, setUserType] = useState<UserRoleType>();
+
+  // 获取用户身份并设置
+  const getLoginState = async () => {
+    const res = await getUserRole();
+    setUserType(res.data.userType);
+  };
+
+  useEffect(() => {
+    // 只要有()就说明执行了 不用.then
+    getLoginState().catch((e) => message.error(e.message));
+  }, []);
+
+  return (
+    <Button {...restProps} className={classnames(className, styles.authButton)}>
+      {mapper[userType!] || ""}
+      {children}
+    </Button>
+  );
+};
+
+export default AuthButton;
+```
+
+#### 9.1.2 测试代码
+
+```tsx
+// tests/components/AuthButton/simple.test.tsx
+import { render, screen } from "@testing-library/react";
+import AuthButton from "components/AuthButton";
+import React from "react";
+
+describe("AuthButton", () => {
+  it("可以正常展示", () => {
+    render(<AuthButton>登录</AuthButton>);
+    // toBeDefined 存在一定局限性，后面会换
+    expect(screen.getByText("登录")).toBeDefined();
+  });
+});
+```
+
 ### 9.2 less 转译（ts+jest）
+
+#### 9.2.1 ts 添加 less 类型定义
+
+在全局类型声明文件 src/types/global.d.ts 里添加 .less 文件的类型定义：
+
+```ts
+// src/types/global.d.ts
+declare module "*.less" {
+  const content: any;
+  export default content;
+}
+```
+
+#### 9.2.2 jest 支持静态资源转译
+
+运行测试时，Jest 不会转译任何内容。对于 ts/tsx 文件，我们选用的是 tsc（ts-jest）来转译；对于 css/less 等静态资源文件，jest 是没办法解析并执行的
+使用 jest-transform-stub 这个库来转译静态资源：
+
+```bash
+pnpm add -D jest-transform-stub@2.0.0
+```
+
+然后在 jest.config.js 里添加转译配置：
+
+```js
+// jest.config.js
+module.exports = {
+  // ...
+  transform: {
+    ".+\\.(css|styl|less|sass|scss|png|jpg|ttf|woff|woff2)$":
+      "jest-transform-stub",
+  },
+};
+```
 
 ### 9.3 更多 Matchers
 
+#### 9.3.1 @testing-library/jest-dom
+
+@testing-library/jest-dom 这个库提供了很多关于 DOM 的 Matcher API：
+
+- toBeDisabled
+- toBeEnabled
+- toBeEmptyDOMElement
+- toBeInTheDocument
+- toBeInvalid
+- toBeRequired
+- toBeValid
+- toBeVisible
+- toContainElement
+- toContainHTML
+- toHaveAccessibleDescription
+- toHaveAccessibleName
+- toHaveAttribute
+- toHaveClass
+- toHaveFocus
+- toHaveFormValues
+- toHaveStyle
+- toHaveTextContent
+- toHaveValue
+- toHaveDisplayValue
+- toBeChecked
+- toBePartiallyChecked
+- toHaveErrorMessage
+
+#### 9.3.2 使用
+
+```bash
+pnpm add -D @testing-library/jest-dom@5.16.4
+```
+
+然后在 tests/jest-setup.ts 里引入一下：
+
+```ts
+// tests/jest-setup.ts
+import "@testing-library/jest-dom";
+// ...
+```
+
+同时，要在 tsconfig.json 里引入这个库的类型声明：
+
+```json
+{
+  "compilerOptions": {
+    "types": ["node", "jest", "@testing-library/jest-dom"]
+  }
+}
+```
+
+修改测试断言代码：
+
+```tsx
+expect(screen.getByText("登录")).toBeInTheDocument();
+```
+
 ### 9.4 三种测试方案
+
+- 测试涉及到**网络请求**，这里我们给出三种测试方案
 
 #### 9.4.1 Mock axios
 
+使用 jest.spyOn 对 axios.get()方法进行监听，并利用 mockResolvedValueOnce 指定其响应内容
+
 #### 9.4.2 Mock API 实现
+
+与 mock axios 思路差不多，使用 jest.spyOn 对 api 的返回值进行 mock
 
 #### 9.4.3 Mock Http 请求
 
+前两种思路比较好理解，实际开发中也比较方便实践
+但对于单元测试思想来说，过于偏向细节
+我们可以不 Mock 任何函数实现，只对 Http 请求进行 Mock，即利用 msw 搭建一个面向测试的服务：
+
+> msw 可以拦截指定的 Http 请求，是做测试时一个非常强大好用的 Http Mock 工具。
+
+```sh
+pnpm add -D msw@0.39.2
+```
+
+先在 tests/mockServer/handlers.ts 里添加 Http 请求的 Mock Handler：
+
+```ts
+import { rest } from "msw";
+
+const handlers = [
+  rest.get("https://whatever/site/api/role", async (req, res, ctx) =>
+    res(ctx.status(200), ctx.json({ userType: "user" }))
+  ),
+];
+export default handlers;
+```
+
+然后在 tests/mockServer/server.ts 里使用这些 handlers 创建 Mock Server 并导出它：
+
+```ts
+import { setupServer } from "msw/node";
+import handlers from "./handlers";
+
+const server = setupServer(...handlers);
+
+export default server;
+```
+
+最后，在我们的 tests/jest-setup.ts 里使用 Mock Server：
+
+```ts
+import server from "./mockServer/server";
+
+beforeAll(() => {
+  server.listen();
+});
+
+afterEach(() => {
+  server.resetHandlers();
+});
+
+afterAll(() => {
+  server.close();
+});
+```
+
+如果你想在某个测试文件中想单独指定某个接口的 Mock 返回， 可以使用 server.use(mockHandler) 来实现。
+
+测试代码：
+
+```tsx
+// tests/components/AuthButton/mockHttp.test.tsx
+// 更偏向真实用例，效果更好
+import { render, screen } from "@testing-library/react";
+import { UserRoleType } from "apis/user";
+import AuthButton from "components/AuthButton";
+import { rest } from "msw";
+import React from "react";
+import server from "../../mockServer/server";
+
+// 初始化函数
+// 其实可以直接使用handler
+// server.use(mockHandler)
+// 但为了更灵活，声明了setup函数，支持传入参数
+const setup = (userType: UserRoleType) => {
+  server.use(
+    rest.get("https://whatever/site/api/role", async (req, res, ctx) => {
+      return res(ctx.status(200), ctx.json({ userType }));
+    })
+  );
+};
+
+describe("AuthButton Mock Http 请求", () => {
+  it("可以正确展示普通用户按钮内容", async () => {
+    setup("user");
+    render(<AuthButton>你好</AuthButton>);
+    expect(await screen.findByText("普通用户你好")).toBeInTheDocument();
+  });
+  it("可以正确展示管理员按钮内容", async () => {
+    setup("admin");
+    render(<AuthButton>你好</AuthButton>);
+    expect(await screen.findByText("管理员你好")).toBeInTheDocument();
+  });
+});
+```
+
 #### 9.4.4 总结
 
+单元测试的核心思想是**像真实用户那样去测你的代码**
+
+这里说的用户一共分为两种：
+
+1. 普通用户。即使用网页的人
+2. 开发者。接口使用者、数据消费者、API 调用侠
+
+对于上述用例来说，需求主要是针对普通用户，则不需要测试代码实现细节，按照用户的操作逻辑与感知，得到正确的结果即可
+
+对于工具类库/组件库这类的测试需求，我们针对的用户则变成了开发者，那么就需要针对代码逻辑与实现细节进行测试
+
 ## 10 Redux 测试
+
+### 10.1 需求实现
+
+现在我们来实现一个用户模块：点击 “获取用户” 按钮，发请求拉取用户信息存到 redux 中，并在页面展示用户信息。
+
+```bash
+pnpm add @reduxjs/toolkit@1.8.1 react-redux@8.0.1 redux@4.2.0
+```
+
+创建 src/store 目录，里面存放一个 src/store/user/reducer.ts 作为 userSlice 的 reducer：
+
+```ts
+// src/store/user/reducer.ts
+import { createSlice } from "@reduxjs/toolkit";
+import { fetchUserThunk } from "./thunks";
+
+const initialState = {
+  id: "",
+  name: "",
+  age: 0,
+  status: "",
+};
+
+const userSlice = createSlice({
+  name: "user",
+  initialState,
+  reducers: {
+    updateUserName: (state, action) => {
+      state.name = action.payload.name;
+    },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(fetchUserThunk.pending, (state) => {
+      state.status = "loading";
+    });
+    builder.addCase(fetchUserThunk.fulfilled, (state, action) => {
+      state.status = "complete";
+      state.name = action.payload.name;
+      state.id = action.payload.id;
+    });
+    builder.addCase(fetchUserThunk.rejected, (state) => {
+      state.status = "error";
+    });
+  },
+});
+
+export const { updateUserName } = userSlice.actions;
+
+export default userSlice.reducer;
+```
+
+在 userSlice 里定义用户信息：ID、姓名、年龄以及加载状态。其中还有一个 updateUserName 的 action 和 fetchUserThunk 异步 thunk。
+
+在 src/store/user/thunks.ts 里添加 fetchUserThunk 的实现：
+
+```ts
+// src/store/user/thunks.ts
+import { createAsyncThunk } from "@reduxjs/toolkit";
+import { fetchUser } from "apis/user";
+
+export const fetchUserThunk = createAsyncThunk(
+  "user/fetchUserThunk",
+  async () => {
+    const response = await fetchUser();
+    return response.data;
+  }
+);
+```
+
+这个 thunk 用到了 fetchUser 的 API 函数，所以要在 src/apis/user.ts 里添加这个函数的实现
+
+由于要在页面中展示用户信息和加载状态，所以在 src/store/user/selectors.ts 里定义这两个 selector：
+
+```ts
+// src/store/user/selectors.ts
+import { RootState } from "../index";
+
+export const selectUser = (state: RootState) => {
+  const { id, age, name } = state.user;
+
+  return {
+    id,
+    age,
+    name,
+  };
+};
+
+export const selectUserFetchStatus = (state: RootState) => state.user.status;
+```
+
+最后在 src/store/index.ts 里把这个 userSlice 放到全局状态：
+
+```ts
+// src/store/index.ts
+import userReducer from "./user/reducer";
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
+
+export const reducer = combineReducers({
+  user: userReducer,
+});
+
+const store = configureStore({
+  reducer,
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+
+export const useAppDispatch = () => useDispatch<AppDispatch>();
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+
+export default store;
+```
+
+在 src/components/User/index.tsx 里添加展示用户信息的组件：
+
+```tsx
+// src/components/User/index.tsx
+import React, { FC } from "react";
+import { useAppDispatch, useAppSelector } from "../../store";
+import { fetchUserThunk } from "store/user/thunks";
+import { selectUser, selectUserFetchStatus } from "store/user/selectors";
+import { Button } from "antd";
+
+const User: FC = () => {
+  const dispatch = useAppDispatch();
+
+  const user = useAppSelector(selectUser);
+  const status = useAppSelector(selectUserFetchStatus);
+
+  const onClick = async () => {
+    const res = await dispatch(fetchUserThunk());
+    console.log("fetchUserThunk", res);
+  };
+
+  return (
+    <div>
+      <h2>用户信息</h2>
+
+      {status === "loading" && <p>加载中...</p>}
+
+      {user.id ? (
+        <div>
+          <p>ID：{user.id}</p>
+          <p>姓名：{user.name}</p>
+          <p>年龄：{user.age}</p>
+        </div>
+      ) : (
+        <p>无用户信息</p>
+      )}
+
+      <Button onClick={onClick} type="primary">
+        加载用户
+      </Button>
+    </div>
+  );
+};
+
+export default User;
+```
+
+在 App.tsx 里使用它，最后在 index.tsx 入口里使用 Provider 来包裹整个 App：
+
+```tsx
+import store from "./store";
+
+ReactDOM.render(
+  <Provider store={store}>
+    <App />
+  </Provider>,
+  document.querySelector("#root")
+);
+```
+
+### 10.2 测试
+
+涉及到数据流的测试，通常会**像真实用户那样去和组件交互，面向业务逻辑**，即**集成测试**，而忽略对于 redux/dva/dva/mobx 内容实现的测试
+
+### 10.2.1 集成测试思路
+
+Mock Http 返回
+渲染 <User /> 组件
+点击按钮拉取用户信息
+做断言
+
+### 10.2.2 测试代码
+
+首先，我们来改造一下 React Tesitng Library 提供的 render 函数：
+
+```tsx
+// tests/testUtils/renderWithStore.tsx
+import { configureStore } from "@reduxjs/toolkit";
+import React, { FC } from "react";
+import { render as rtlRender, RenderOptions } from "@testing-library/react";
+import { RootState, reducer } from "store/index";
+import { Provider } from "react-redux";
+
+interface CustomRenderOptions extends RenderOptions {
+  preloadedState?: RootState;
+  store?: ReturnType<typeof configureStore>;
+}
+
+const renderWithStore = (
+  ui: React.ReactElement,
+  options: CustomRenderOptions
+) => {
+  // 获取自定义的 options，options 里带有 store 内容
+  const {
+    preloadedState = {},
+    store = configureStore({ reducer, preloadedState }),
+    ...renderOptions
+  } = options;
+
+  // 使用 Provider 包裹
+  const Wrapper: FC = ({ children }) => {
+    return <Provider store={store}>{children}</Provider>;
+  };
+
+  // 使用 RTL 的 render 函数
+  return rtlRender(ui, { wrapper: Wrapper, ...renderOptions });
+};
+export default renderWithStore;
+```
+
+自定义 render 的作用就是：创建一个使用 redux 的环境，用 <Wrapper /> 包裹传入的业务组件，并且可以让我们决定当前 redux 的初始状态。 然后在 tests/components/User/index.test.tsx 使用自定义的 render 来渲染 <User /> 组件：
+
+```tsx
+// 面向业务的集成测试
+import { fireEvent, render, screen } from "@testing-library/react";
+import User from "components/User";
+import { rest } from "msw";
+import React from "react";
+import server from "../../../mockServer/server";
+import renderWithStore from "../../../testUtils/renderWithStore";
+
+// 初始化 Http 请求
+const setupHttp = (name?: string, age?: number) => {
+  server.use(
+    rest.get("https://whatever/site/api/users", async (req, res, ctx) => {
+      return res(
+        ctx.status(200),
+        ctx.json({
+          id: "1",
+          name: name || "Jack",
+          age: age || 15,
+        })
+      );
+    })
+  );
+};
+
+describe("User", () => {
+  it("点击可以正常获取用户列表", async () => {
+    setupHttp("Mary", 10);
+    renderWithStore(<User />, {
+      preloadedState: {
+        user: {
+          id: "",
+          name: "",
+          age: 10,
+          status: "",
+        },
+      },
+    });
+    // 此时没开始请求
+    expect(screen.getByText("无用户信息")).toBeInTheDocument();
+
+    // 开始请求
+    fireEvent.click(screen.getByText("加载用户"));
+
+    // 结束请求
+    expect(await screen.findByText("ID：1")).toBeInTheDocument();
+    expect(screen.getByText("姓名：Mary")).toBeInTheDocument();
+    expect(screen.getByText("年龄：10")).toBeInTheDocument();
+
+    expect(screen.queryByText("加载中...")).not.toBeInTheDocument();
+  });
+});
+```
+
+### 10.2.3 单元测试思路
+
+对于非常复杂的 action 以及 selector 时，单测是个不错的选择
+这里只给出测试思路：
+先写 selector 的单测。由于是纯函数，所以这两个单测比较简单
+异步 action 单测：
+使用 msw Mock Http 的返回
+使用 redux-mock-store 里的 configureStore 创建一个假 store
+在假 store 里引入 redux-thunk 中间件
+最后对 data.payload 做了断言
 
 ## 11 React Hook 测试
 

@@ -936,14 +936,19 @@ const initialState = {
   status: "",
 };
 
+// 该函数接收一个初始化state对象，和一个reducer对象
+// 它可以将store以slice的方式分割成为不同的部分，每个部分都会独立生成相对应的action和state对象
 const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
     updateUserName: (state, action) => {
+      // immer赋予了直接修改state的能力
       state.name = action.payload.name;
     },
   },
+  // extraReducers 字段让 slice 处理在别处定义的 actions，
+  // 包括由 createAsyncThunk 或其他slice生成的actions。
   extraReducers: (builder) => {
     builder.addCase(fetchUserThunk.pending, (state) => {
       state.status = "loading";
@@ -959,8 +964,9 @@ const userSlice = createSlice({
   },
 });
 
+// 导出actions方法
 export const { updateUserName } = userSlice.actions;
-
+// 默认导出reducer
 export default userSlice.reducer;
 ```
 
@@ -973,6 +979,10 @@ export default userSlice.reducer;
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { fetchUser } from "apis/user";
 
+// createAsyncThunk方法主要用来创建异步函数，创建完毕之后在reduce中进行处理，最后在业务代码中用dispatch进行调用
+// （需要注意的是，在createSlice中，我们不可以用普通的reduce处理异步函数，必须使用  extraReducers来处理异步）
+// 方法触发的时候会有三种状态：
+// pending（进行中）、fulfilled（成功）、rejected（失败）
 export const fetchUserThunk = createAsyncThunk(
   "user/fetchUserThunk",
   async () => {
@@ -1011,10 +1021,12 @@ import userReducer from "./user/reducer";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { TypedUseSelectorHook, useDispatch, useSelector } from "react-redux";
 
+// 整合全部reducers
 export const reducer = combineReducers({
   user: userReducer,
 });
 
+// 创建全局store
 const store = configureStore({
   reducer,
 });
@@ -1022,6 +1034,8 @@ const store = configureStore({
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
 
+// 导出全局的hooks，分别用于dispatch action和selector state
+// 来自react-redux
 export const useAppDispatch = () => useDispatch<AppDispatch>();
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 
@@ -1092,14 +1106,14 @@ ReactDOM.render(
 
 涉及到数据流的测试，通常会**像真实用户那样去和组件交互，面向业务逻辑**，即**集成测试**，而忽略对于 redux/dva/dva/mobx 内容实现的测试
 
-### 10.2.1 集成测试思路
+#### 10.2.1 集成测试思路
 
-Mock Http 返回
-渲染 <User /> 组件
-点击按钮拉取用户信息
-做断言
+1. Mock Http 返回
+2. 渲染 `<User />` 组件
+3. 点击按钮拉取用户信息
+4. 做断言
 
-### 10.2.2 测试代码
+#### 10.2.2 测试代码
 
 首先，我们来改造一下 React Tesitng Library 提供的 render 函数：
 
@@ -1138,7 +1152,9 @@ const renderWithStore = (
 export default renderWithStore;
 ```
 
-自定义 render 的作用就是：创建一个使用 redux 的环境，用 <Wrapper /> 包裹传入的业务组件，并且可以让我们决定当前 redux 的初始状态。 然后在 tests/components/User/index.test.tsx 使用自定义的 render 来渲染 <User /> 组件：
+自定义 render 的作用就是：创建一个使用 redux 的环境，用 `<Wrapper />` 包裹传入的业务组件，并且可以让我们决定当前 redux 的初始状态。
+
+然后在 `tests/components/User/index.test.tsx` 使用自定义的 render 来渲染 `<User />` 组件：
 
 ```tsx
 // 面向业务的集成测试
@@ -1194,19 +1210,410 @@ describe("User", () => {
 });
 ```
 
-### 10.2.3 单元测试思路
+#### 10.2.3 `getBy*` vs `queryBy*` vs `findBy*`
 
-对于非常复杂的 action 以及 selector 时，单测是个不错的选择
-这里只给出测试思路：
-先写 selector 的单测。由于是纯函数，所以这两个单测比较简单
-异步 action 单测：
-使用 msw Mock Http 的返回
-使用 redux-mock-store 里的 configureStore 创建一个假 store
-在假 store 里引入 redux-thunk 中间件
-最后对 data.payload 做了断言
+- 当要断言元素是否存在时，使用 `getBy...`，因为找不到时，它会直接抛出错误来让测试失败
+- 当要做异步逻辑，然后再获取元素时，使用 `await findBy...`，因为它会不断地寻找元素
+- 上面两种情况都不满足时，可以使用 `queryBy...` 这个 API，只查一次，且不会失败报错
+
+#### 10.2.4 单元测试思路
+
+- 对于非常复杂的 action 以及 selector 时，单测是个不错的选择
+- 这里只给出测试思路：
+  1. 先写 selector 的单测。由于是纯函数，所以这两个单测比较简单
+  2. 异步 action 单测：
+     1. 使用 msw Mock Http 的返回
+     2. 使用 redux-mock-store 里的 configureStore 创建一个假 store
+     3. 在假 store 里引入 redux-thunk 中间件
+     4. 最后对 data.payload 做断言
 
 ## 11 React Hook 测试
 
+### 11.1 需求与实现
+
+在 src/hooks/useCounter.ts 添加：
+
+```ts
+// src/hooks/useCounter.ts
+import { useState } from "react";
+
+export interface Options {
+  min?: number;
+  max?: number;
+}
+
+export type ValueParam = number | ((c: number) => number);
+
+function getTargetValue(val: number, options: Options = {}) {
+  const { min, max } = options;
+  let target = val;
+  if (typeof max === "number") {
+    target = Math.min(max, target);
+  }
+  if (typeof min === "number") {
+    target = Math.max(min, target);
+  }
+  return target;
+}
+
+function useCounter(initialValue = 0, options: Options = {}) {
+  const { min, max } = options;
+
+  const [current, setCurrent] = useState(() => {
+    return getTargetValue(initialValue, {
+      min,
+      max,
+    });
+  });
+
+  const setValue = (value: ValueParam) => {
+    setCurrent((c) => {
+      const target = typeof value === "number" ? value : value(c);
+      return getTargetValue(target, {
+        max,
+        min,
+      });
+    });
+  };
+
+  const inc = (delta = 1) => {
+    setValue((c) => c + delta);
+  };
+
+  const dec = (delta = 1) => {
+    setValue((c) => c - delta);
+  };
+
+  const set = (value: ValueParam) => {
+    setValue(value);
+  };
+
+  const reset = () => {
+    setValue(initialValue);
+  };
+
+  return [
+    current,
+    {
+      inc,
+      dec,
+      set,
+      reset,
+    },
+  ] as const;
+}
+
+export default useCounter;
+```
+
+### 11.2 集成测试
+
+#### 11.2.1 组件测试
+
+由于 React 规定只有在组件中才能使用 Hooks，所以在测试前可以**先构造出一个组件，通过按钮触发点击事件，测试 ui 的值是否发生变化**
+
+安装 `@testing-library/user-event`，用于处理点击事件：
+
+```bash
+pnpm add -D @testing-library/user-event@14.1.0
+```
+
+添加 `tests/hooks/useCounter/TestComponent.test.tsx`：
+
+```tsx
+import useCounter from "hooks/useCounter";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import React from "react";
+
+// 测试组件
+const UseCounterTest = () => {
+  const [counter, { inc, set, dec, reset }] = useCounter(0);
+  return (
+    <section>
+      <div>Counter: {counter}</div>
+      <button onClick={() => inc(1)}>inc(1)</button>
+      <button onClick={() => dec(1)}>dec(1)</button>
+      <button onClick={() => set(10)}>set(10)</button>
+      <button onClick={reset}>reset()</button>
+    </section>
+  );
+};
+
+describe("useCounter", () => {
+  it("可以做加法", async () => {
+    render(<UseCounterTest />);
+
+    const incBtn = screen.getByText("inc(1)");
+
+    await userEvent.click(incBtn);
+
+    expect(screen.getByText("Counter: 1")).toBeInTheDocument();
+  });
+
+  it("可以做减法", async () => {
+    render(<UseCounterTest />);
+
+    const decBtn = screen.getByText("dec(1)");
+
+    await userEvent.click(decBtn);
+
+    expect(screen.getByText("Counter: -1")).toBeInTheDocument();
+  });
+
+  it("可以设置值", async () => {
+    render(<UseCounterTest />);
+
+    const setBtn = screen.getByText("set(10)");
+
+    await userEvent.click(setBtn);
+
+    expect(screen.getByText("Counter: 10")).toBeInTheDocument();
+  });
+
+  it("可以重置值", async () => {
+    render(<UseCounterTest />);
+
+    const incBtn = screen.getByText("inc(1)");
+    const resetBtn = screen.getByText("reset()");
+
+    await userEvent.click(incBtn);
+    await userEvent.click(resetBtn);
+
+    expect(screen.getByText("Counter: 0")).toBeInTheDocument();
+  });
+});
+```
+
+#### 11.2.2 setup
+
+通过绑定事件并手动触发，感觉还是有些麻烦，工作量较大
+
+我们沿袭上面的思路，**通过 render 组件来为 hooks 提供运行环境**
+这次我们将重点放在 **hooks 返回值**（函数）的测试上
+创建 setup 函数 通过 act 调用其方法 期待结果即可
+
+这样能够避免组件交互，且是对内部功能函数的直接调用并测试
+
+注意由于 inc 里面的 setState 是一个异步逻辑，因此我们可以使用 @testing-library/react 提供的 act 里调用它。**act 可以确保回调里的异步逻辑走完再执行后续代码**
+
+具体代码：
+
+```tsx
+// tests/hooks/useCounter/setupTestComponent.test.tsx
+import useCounter from "hooks/useCounter";
+import { act, render } from "@testing-library/react";
+import React from "react";
+
+const setup = (initialNumber: number) => {
+  const returnVal = {};
+
+  const UseCounterTest = () => {
+    const [counter, utils] = useCounter(initialNumber);
+
+    Object.assign(returnVal, {
+      counter,
+      utils,
+    });
+    // 由于只是初始化React组件环境
+    // 无需返回dom
+    return null;
+  };
+
+  render(<UseCounterTest />);
+
+  return returnVal;
+};
+
+describe("useCounter", () => {
+  it("可以做加法", async () => {
+    const useCounterData: any = setup(0);
+
+    act(() => {
+      useCounterData.utils.inc(1);
+    });
+
+    expect(useCounterData.counter).toEqual(1);
+  });
+
+  it("可以做减法", async () => {
+    const useCounterData: any = setup(0);
+
+    act(() => {
+      useCounterData.utils.dec(1);
+    });
+
+    expect(useCounterData.counter).toEqual(-1);
+  });
+
+  it("可以设置值", async () => {
+    const useCounterData: any = setup(0);
+
+    act(() => {
+      useCounterData.utils.set(10);
+    });
+
+    expect(useCounterData.counter).toEqual(10);
+  });
+
+  it("可以重置值", async () => {
+    const useCounterData: any = setup(0);
+
+    act(() => {
+      useCounterData.utils.inc(1);
+      useCounterData.utils.reset();
+    });
+
+    expect(useCounterData.counter).toEqual(0);
+  });
+});
+```
+
+#### 11.2.3 renderHook
+
+基于这样的想法，@testing-library/react-hooks 把上面的步骤封装成了一个公共函数 renderHook：
+
+```bash
+pnpm add -D @testing-library/react-hooks@8.0.0
+```
+
+然后，在 renderHook 回调中使用 useCounter：
+
+```tsx
+// tests/hooks/useCounter/renderHook.test.ts
+import { renderHook } from "@testing-library/react-hooks";
+import useCounter from "hooks/useCounter";
+import { act } from "@testing-library/react";
+
+describe("useCounter", () => {
+  it("可以做加法", () => {
+    /** renderHook返回值：
+    {
+      result: { all: [Getter], current: [Getter], error: [Getter] },
+      rerender: [Function: rerenderHook],
+      unmount: [Function: unmountHook],
+      waitFor: [AsyncFunction: waitFor],
+      waitForValueToChange: [AsyncFunction: waitForValueToChange],
+      waitForNextUpdate: [AsyncFunction: waitForNextUpdate]
+    }
+    */
+    const { result } = renderHook(() => useCounter(0));
+
+    act(() => {
+      // 正常情况下，result.current就是hook的全部返回值
+      // all的话就是hook返回值外面再包上一个[]
+      result.current[1].inc(1);
+    });
+
+    expect(result.current[0]).toEqual(1);
+  });
+
+  it("可以做减法", () => {
+    const { result } = renderHook(() => useCounter(1));
+    act(() => {
+      result.current[1].dec(1);
+    });
+    expect(result.current[0]).toEqual(0);
+  });
+  it("可以设置值", () => {
+    const { result } = renderHook(() => useCounter(0));
+    act(() => {
+      result.current[1].set(2);
+    });
+    expect(result.current[0]).toEqual(2);
+  });
+  it("可以重置值", () => {
+    const { result } = renderHook(() => useCounter(0));
+    act(() => {
+      result.current[1].inc(2);
+      result.current[1].dec(1);
+      result.current[1].reset();
+    });
+    expect(result.current[0]).toEqual(0);
+  });
+});
+```
+
+### 11.3 总结
+
+总结一下 React Hook 的测试方法：
+
+- 声明 setup，在里面通过渲染测试组件为 React Hook 提供 React 组件环境
+- 把 React Hook 的返回结果返回给每个用例
+- 每个用例从 setup 返回拿到 React Hook 的返回值，并对其进行测试
+
+通过这一章，我们再次看到了集成测试的强大作用 —— 让测试忽略实现细节，只关注功能是否完好。
+
 ## 12 Jest 性能优化
 
+Jest 执行测试的过程有 3 个地方比较耗性能：
+
+- 生成虚拟文件系统。 在执行第一个测试会很慢
+- 多线程。 生成新线程耗费的资源，不过，不同机器的效果会不一致
+- 文件转译。 Jest 会在执行到该文件再对它进行转译
+
+解决的方法有：
+
+- 无解，有条件的话拆解项目吧
+- 具体情况具体分析，要看机器的执行情况，多线程快就用多线程，单线程快就用单线程
+- 使用 esbuild-jest、 @swc/jest 等其它高效的转译工具来做转译
+
 ## 13 自动化测试
+
+### 13.1 Github Actions
+
+在根目录添加 `.github/workflows/ci.yml`：
+
+```yml
+# 指定工作流程的名称
+name: CI-learning
+# 指定此工作流程的触发事件Event（push、pull-request）
+on:
+  push:
+    # 监听main分支的push事件
+    branches: master
+jobs:
+  #指定job名称
+  CI:
+    # 指定该job在最新版本的ubuntu linux的runner上运行
+    # runs-on: ubuntu-latest
+    runs-on: macos-latest
+    # 此job的工作步骤
+    steps:
+      # 首先运行actions/checkout@v3操作，操作一般用uses来调用
+      # 拉取代码到runner
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      # 给当前环境下载node，并指定版本为16.x
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16.16.0"
+      # 安装pnpm
+      - name: Installing Pnpm
+        run: npm i -g pnpm
+      # 安装依赖
+      - name: Installing Dependencies
+        run: pnpm install
+      # 运行自动化测试
+      - name: Running Test
+        run: pnpm run test
+```
+
+### 13.2 Coveralls
+
+> https://coveralls.io/
+
+Coveralls 能够读取 Jest 生成的 `lcov.info` 覆盖率文件，并以可视化的方法展示出来，不仅能做预警，还能实时了解整体测试覆盖情况。
+
+首先在 Coveralls 官网 (opens new window)用 Github 账号登入，添加你的 Github 项目即可。
+
+github action 最后加上如下指令即可
+
+```yml
+# 使用 Coveralls 组件显示可视化测试报告
+- name: Coveralls
+  uses: coverallsapp/github-action@master
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
